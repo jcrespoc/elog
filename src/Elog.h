@@ -84,7 +84,6 @@ public:
     uint8_t getSyslogLogLevel(const uint8_t logId, const uint8_t facility);
     void setSyslogLogLevel(const uint8_t logId, const uint8_t logLevel, const uint8_t facility);
     uint8_t getSyslogLastMsgLogLevel(const uint8_t logId, const uint8_t facility);
-    void setSyslogServer(const char* server, uint16_t port = 514);
 #endif // ELOG_SYSLOG_ENABLE
     void configureInternalLogging(Stream& internalLogDevice, uint8_t internalLogLevel = ELOG_LEVEL_ERROR, uint16_t statsEvery = 10000);
     void enableQuery(Stream& serialPort);

@@ -458,14 +458,6 @@ uint8_t Elog::getSyslogLastMsgLogLevel(const uint8_t logId, const uint8_t facili
     return logSyslog.getLastMsgLogLevel(logId, facility);
 }
 
-void Elog::setSyslogServer(const char* server, uint16_t port)
-{
-    if (!logStarted) {
-        configure();
-    }
-    logSyslog.setServer(server, port);
-}
-
 #endif // ELOG_SYSLOG_ENABLE
 
 /**
