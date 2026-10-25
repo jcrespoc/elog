@@ -371,6 +371,31 @@ void Elog::configureSyslog(const char* server, uint16_t port, const char* hostna
     logSyslog.configure(server, port, hostname, waitIfNotReady, maxWaitMilliseconds, maxRegistrations);
 }
 
+/**
+ * Set the syslog server and port at runtime
+ * @param server the IP address or hostname of the syslog server
+ * @param port the port of the syslog server. Default is 514
+ */
+void Elog::setSyslogServer(const char* server, const uint16_t port)
+{
+    if (!logStarted) {
+        configure();
+    }
+    logSyslog.setServer(server, port);
+}
+
+/**
+ * Set the syslog client hostname at runtime
+ * @param hostname the hostname of the device
+ */
+void Elog::setSyslogHostname(const char* hostname)
+{
+    if (!logStarted) {
+        configure();
+    }
+    logSyslog.setHostname(hostname);
+}
+
 /** Register a Syslog server for logging
  * @param logId the id of the log
  * @param logLevel the level of the log (VERBOSE, TRACE, DEBUG, INFO, NOTICE, WARNING, ERROR, CRITICAL, ALERT, EMERGENCY, NOLOG)
