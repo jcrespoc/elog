@@ -37,6 +37,26 @@ void LogSyslog::configure(const char* serverName, const uint16_t port, const cha
     Logger.logInternal(ELOG_LEVEL_INFO, "Configured syslog server %s:%d, hostname %s, max registrations %d", serverName, port, hostname, maxRegistrations);
 }
 
+/* Set the syslog server and port
+ * serverName: the name or IP of the syslog server
+ * port: the port of the syslog server
+ */
+void LogSyslog::setServer(const char* serverName, const uint16_t port)
+{
+    this->syslogServer = serverName;
+    this->syslogPort = port;
+    Logger.logInternal(ELOG_LEVEL_INFO, "Syslog server updated to %s:%d", serverName, port);
+}
+
+/* Set the syslog client hostname
+ * hostname: the hostname of the device
+ */
+void LogSyslog::setHostname(const char* hostname)
+{
+    this->syslogHostname = hostname;
+    Logger.logInternal(ELOG_LEVEL_INFO, "Syslog hostname updated to %s", hostname);
+}
+
 /* Register syslog for logging
  * logId: unique id for the log
  * loglevel: the log level that should be logged
@@ -136,7 +156,7 @@ void LogSyslog::write(LogLineEntry logLineEntry, Setting& setting)
 
         uint8_t buffer[256];
         // Date and time is not included in the syslog message. It is assumed that the syslog server will add it
-        snprintf((char*)buffer, sizeof(buffer), "<%d>%s %s: %s", priority, syslogHostname, setting.appName, logLineEntry.logMessage);
+        snprintf((char*)buffer, sizeof(buffer), "<%d>%s %s: %s", priority, syslogHostname ? syslogHostname : "esp32", setting.appName, logLineEntry.logMessage);
         int len = strlen((char*)buffer);
 
         // Remove any non-printing characters at the end of the line
@@ -144,7 +164,7 @@ void LogSyslog::write(LogLineEntry logLineEntry, Setting& setting)
             len--;
         }
 
-        if (syslogUdp.beginPacket(syslogServer, syslogPort) == 1) {
+        if (syslogServer && syslogServer[0] != '\0' && syslogUdp.beginPacket(syslogServer, syslogPort) == 1) {
             sentBytes = syslogUdp.write(buffer, len);
             success = syslogUdp.endPacket();
         }

@@ -78,6 +78,8 @@ public:
 #ifdef ELOG_SYSLOG_ENABLE
     void configureSyslog(const char* server, uint16_t port = 514, const char* hostname = "esp32", bool waitIfNotReady = false, const uint16_t maxWaitMilliseconds = 5000,
                          const uint8_t maxRegistrations = 10);
+    void setSyslogServer(const char* server, const uint16_t port = 514);
+    void setSyslogHostname(const char* hostname);
     void registerSyslog(const uint8_t logId, const uint8_t logLevel, const uint8_t facility, const char* appName);
     uint8_t getSyslogLogLevel(const uint8_t logId, const uint8_t facility);
     void setSyslogLogLevel(const uint8_t logId, const uint8_t logLevel, const uint8_t facility);
