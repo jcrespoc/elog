@@ -2,7 +2,6 @@
 #define ELOG_FORMATTING_H
 
 #include <Arduino.h>
-#include <TimeLib.h>
 #include <LogCommon.h>
 
 #define LENGTH_OF_TIME 25
