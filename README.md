@@ -52,13 +52,18 @@ build_flags =
 
 Only include the flags for features you use. You do not need to edit `ElogConfig.h` when using PlatformIO.
 
-> **Note:** When using `ELOG_SD_ENABLE` on ESP32 you will see a harmless compiler warning from the SdFat library: `File not defined because __has_include(FS.h)`. This happens because `FS.h` is present on ESP32 (so SdFat defers the `File` typedef to it) but SdFat warns you that it didn't define `File` itself. To suppress it, add `-D DISABLE_FS_H_WARNING` to your `build_flags`:
+> **Note on SD Card logging (`ELOG_SD_ENABLE`):** To keep the core library lightweight and prevent unnecessary compilation overhead, `SdFat` is an optional dependency. If you enable `ELOG_SD_ENABLE`, you must also add the `SdFat` library to your `lib_deps` in `platformio.ini`:
 >
 > ```ini
+> lib_deps =
+>     https://github.com/jcrespoc/elog.git
+>     adafruit/SdFat - Adafruit Fork @ ^2.3.52
+>
 > build_flags =
 >     -D ELOG_SD_ENABLE
 >     -D DISABLE_FS_H_WARNING
 > ```
+> *(The `-D DISABLE_FS_H_WARNING` flag suppresses the harmless warning `File not defined because __has_include(FS.h)` on ESP32).*
 
 ---
 
@@ -176,7 +181,7 @@ You could pop out the SD card for reading the files. This logger is pretty resis
 
 You could also use the "Query command prompt". Read more in this help.
 
-**IMPORTANT**: SD card support requires `ELOG_SD_ENABLE` to be enabled at compile time. See [Enabling optional features](#enabling-optional-features-sd-spiffs-syslog-timer) above for how to do this in Arduino IDE and PlatformIO.
+**IMPORTANT**: SD card support requires `ELOG_SD_ENABLE` to be enabled at compile time and the `adafruit/SdFat - Adafruit Fork` library added to your project dependencies. See [Enabling optional features](#enabling-optional-features-sd-spiffs-syslog-timer) above for details.
 
 #### SPIFFS (Internal EEPROM) logging
 
