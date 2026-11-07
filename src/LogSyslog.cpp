@@ -32,9 +32,14 @@ void LogSyslog::configure(const char* serverName, const uint16_t port, const cha
     this->syslogHostname = hostname;
     this->waitIfNotReady = waitIfNotReady;
     this->maxWaitMilliseconds = maxWaitMilliseconds;
+    this->syslogIp = INADDR_NONE;
+    if (serverName && serverName[0] != '\0') {
+        syslogIp.fromString(serverName);
+    }
+    this->lastDnsAttempt = 0;
     syslogConfigured = true;
 
-    Logger.logInternal(ELOG_LEVEL_INFO, "Configured syslog server %s:%d, hostname %s, max registrations %d", serverName, port, hostname, maxRegistrations);
+    Logger.logInternal(ELOG_LEVEL_INFO, "Configured syslog server %s:%d, hostname %s, max registrations %d", serverName ? serverName : "", port, hostname ? hostname : "", maxRegistrations);
 }
 
 /* Register syslog for logging
@@ -119,56 +124,94 @@ void LogSyslog::outputFromBuffer(const LogLineEntry logLineEntry)
     }
 }
 
+/* Check if a valid network connection with an assigned IP is available.
+ * Supports both Ethernet and WiFi interfaces on ESP32.
+ */
+bool LogSyslog::isNetworkConnected() const
+{
+#if defined(ESP32)
+  #if __has_include(<ETH.h>)
+    if (ETH.linkUp() && ETH.localIP() != IPAddress(0, 0, 0, 0)) {
+        return true;
+    }
+  #endif
+#endif
+    return (WiFi.status() == WL_CONNECTED && WiFi.localIP() != IPAddress(0, 0, 0, 0));
+}
+
+/* Ensure that syslogIp contains a valid resolved IP address.
+ * Attempts numeric parsing first, then DNS resolution if network is connected.
+ * Applies a 30-second cooldown after a failed DNS attempt to avoid blocking.
+ */
+bool LogSyslog::ensureServerIp()
+{
+    if (syslogIp != INADDR_NONE && syslogIp != IPAddress(0, 0, 0, 0)) {
+        return true;
+    }
+    if (!syslogServer || syslogServer[0] == '\0') {
+        return false;
+    }
+    if (syslogIp.fromString(syslogServer)) {
+        return true;
+    }
+    if (!isNetworkConnected()) {
+        return false;
+    }
+    if (lastDnsAttempt != 0 && (millis() - lastDnsAttempt < 30000)) {
+        return false;
+    }
+
+    lastDnsAttempt = millis();
+    IPAddress resolved;
+    if (WiFi.hostByName(syslogServer, resolved) && resolved != IPAddress(0, 0, 0, 0)) {
+        syslogIp = resolved;
+        return true;
+    }
+
+    syslogIp = INADDR_NONE;
+    return false;
+}
+
 /* Write the logline to the syslog server
  * logLineEntry: the log line entry
  * setting: the syslog setting
  */
 void LogSyslog::write(LogLineEntry logLineEntry, Setting& setting)
 {
+    if (!ensureServerIp()) {
+        stats.messagesDiscardedTotal++;
+        return;
+    }
+
     static int const syslogLevel[ELOG_NUM_LOG_LEVELS] = { 6, 0, 1, 2, 3, 4, 5, 6, 7, 7, 7 };
 
-    uint16_t remainingWaitMs = maxWaitMilliseconds;
-    while (true) {
-        uint32_t sentBytes = 0;
-        int success = 0;
+    uint8_t priority = syslogLevel[logLineEntry.logLevel] | (setting.facility << 3);
 
-        uint8_t priority = syslogLevel[logLineEntry.logLevel] | (setting.facility << 3);
+    uint8_t buffer[256];
+    // Date and time is not included in the syslog message. It is assumed that the syslog server will add it
+    int len = snprintf((char*)buffer, sizeof(buffer), "<%d>%s %s: %s", priority, syslogHostname ? syslogHostname : "esp32", setting.appName, logLineEntry.logMessage);
 
-        uint8_t buffer[256];
-        // Date and time is not included in the syslog message. It is assumed that the syslog server will add it
-        snprintf((char*)buffer, sizeof(buffer), "<%d>%s %s: %s", priority, syslogHostname, setting.appName, logLineEntry.logMessage);
-        int len = strlen((char*)buffer);
+    // Remove any non-printing characters at the end of the line
+    while (len >= 1 && !isprint(buffer[len - 1])) {
+        len--;
+    }
+    if (len <= 0) {
+        return;
+    }
 
-        // Remove any non-printing characters at the end of the line
-        while (len >= 1 && !isprint(buffer[len - 1])) {
-            len--;
-        }
+    // Send packet directly to IP address (zero DNS lookup, works over WiFi and Ethernet!)
+    uint32_t sentBytes = 0;
+    int success = 0;
+    if (syslogUdp.beginPacket(syslogIp, syslogPort) == 1) {
+        sentBytes = syslogUdp.write(buffer, len);
+        success = syslogUdp.endPacket();
+    }
 
-        if (syslogUdp.beginPacket(syslogServer, syslogPort) == 1) {
-            sentBytes = syslogUdp.write(buffer, len);
-            success = syslogUdp.endPacket();
-        }
-
-        if (success && sentBytes == len) {
-            stats.bytesWrittenTotal += len;
-            stats.messagesWrittenTotal++;
-            return;
-        }
-
-        // Network not ready or sending the log failed
-
-        if (!waitIfNotReady || remainingWaitMs == 0) {
-            stats.messagesDiscardedTotal++;
-            Logger.logInternal(ELOG_LEVEL_WARNING, "Network not ready or could not send syslog message");
-            return;
-        }
-
-        // Wait 250 ms at a time
-        unsigned long delayTime = (remainingWaitMs > 250) ? 250 : remainingWaitMs;
-        delay(delayTime);
-        // It is intentional that after a cumulative delay equal to the configured
-        // maxWaitMilliseconds, we stop waiting.
-        remainingWaitMs -= delayTime;
+    if (success && sentBytes == len) {
+        stats.bytesWrittenTotal += len;
+        stats.messagesWrittenTotal++;
+    } else {
+        stats.messagesDiscardedTotal++;
     }
 }
 

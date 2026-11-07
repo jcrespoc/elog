@@ -6,7 +6,11 @@
 #ifdef ELOG_SYSLOG_ENABLE
 
 #include <LogFormat.h>
+#include <WiFi.h>
 #include <WiFiUdp.h>
+#if defined(ESP32) && __has_include(<ETH.h>)
+#include <ETH.h>
+#endif
 
 class LogSyslog {
     struct Setting {
@@ -61,15 +65,19 @@ private:
     char peekFilterText[30];
 
     bool syslogConfigured = false;
-    const char* syslogServer;
-    uint16_t syslogPort;
-    const char* syslogHostname;
-    bool waitIfNotReady;
-    uint16_t maxWaitMilliseconds;
+    const char* syslogServer = nullptr;
+    IPAddress syslogIp = INADDR_NONE;
+    uint32_t lastDnsAttempt = 0;
+    uint16_t syslogPort = 514;
+    const char* syslogHostname = "esp32";
+    bool waitIfNotReady = false;
+    uint16_t maxWaitMilliseconds = 0;
 
     Stream* querySerial = nullptr;
 
     void write(LogLineEntry logLineEntry, Setting& setting);
+    bool isNetworkConnected() const;
+    bool ensureServerIp();
 };
 
 #else // ELOG_SYSLOG_ENABLE
