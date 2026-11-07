@@ -78,11 +78,12 @@ public:
 #ifdef ELOG_SYSLOG_ENABLE
     void configureSyslog(const char* server, uint16_t port = 514, const char* hostname = "esp32", bool waitIfNotReady = false, const uint16_t maxWaitMilliseconds = 5000,
                          const uint8_t maxRegistrations = 10);
+    void setSyslogServer(const char* server, const uint16_t port = 514);
+    void setSyslogHostname(const char* hostname);
     void registerSyslog(const uint8_t logId, const uint8_t logLevel, const uint8_t facility, const char* appName);
     uint8_t getSyslogLogLevel(const uint8_t logId, const uint8_t facility);
     void setSyslogLogLevel(const uint8_t logId, const uint8_t logLevel, const uint8_t facility);
     uint8_t getSyslogLastMsgLogLevel(const uint8_t logId, const uint8_t facility);
-    void setSyslogServer(const char* server, uint16_t port = 514);
 #endif // ELOG_SYSLOG_ENABLE
     void configureInternalLogging(Stream& internalLogDevice, uint8_t internalLogLevel = ELOG_LEVEL_ERROR, uint16_t statsEvery = 10000);
     void enableQuery(Stream& serialPort);
