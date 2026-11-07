@@ -56,7 +56,6 @@ Only include the flags for features you use. You do not need to edit `ElogConfig
 >
 > ```ini
 > lib_deps =
->     https://github.com/jcrespoc/elog.git
 >     adafruit/SdFat - Adafruit Fork @ ^2.3.52
 >
 > build_flags =
